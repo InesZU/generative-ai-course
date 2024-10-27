@@ -1,110 +1,177 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Poem Generator</title>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-      }
-      input {
-        margin: 5px;
-      }
-      button {
-        padding: 10px 20px;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        cursor: pointer;
-      }
-      button:hover {
-        background-color: #45a049;
-      }
-      #lyrics {
-        margin-top: 20px;
-        margin-bottom: 20px;
-        white-space: pre-wrap;
-      }
-      #voiceOverButton {
-        margin-top: 10px;
-        margin-bottom: 10px;
-        display: none;
-      }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .input-container {
+            margin: 20px 0;
+        }
+        input {
+            margin: 5px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #lyrics {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        #voiceOverButton {
+            display: none;
+            background-color: #2196F3;
+        }
+        #voiceOverButton:hover {
+            background-color: #1976D2;
+        }
+        .loading {
+            display: none;
+            margin: 10px 0;
+            color: #666;
+        }
+        audio {
+            margin-top: 15px;
+            width: 100%;
+        }
     </style>
-  </head>
-  <body>
+</head>
+<body>
     <h1>Poem Generator</h1>
-    <p>Enter 5 words to generate a poem:</p>
-    <input type="text" id="word1" placeholder="Word 1" />
-    <input type="text" id="word2" placeholder="Word 2" />
-    <input type="text" id="word3" placeholder="Word 3" />
-    <input type="text" id="word4" placeholder="Word 4" />
-    <input type="text" id="word5" placeholder="Word 5" />
-    <br />
-    <button onclick="generatePoetry()">Generate Poem</button>
-    <button id="voiceOverButton" onclick="voiceOverLyrics()">Voice Over</button>
+    <p>Enter the special person's name and the event to generate a poem:</p>
+
+    <div class="input-container">
+        <input type="text" id="word1" placeholder="Special person's name">
+        <input type="text" id="word2" placeholder="Event">
+    </div>
+
+    <button onclick="generatePoetry()" id="generateButton">Generate Poem</button>
+    <button id="voiceOverButton" onclick="voiceOverLyrics()">Generate Voice Over</button>
+
+    <div id="loadingPoem" class="loading">Generating poem...</div>
+    <div id="loadingVoice" class="loading">Generating voice over...</div>
 
     <h2>Generated Poem:</h2>
     <div id="lyrics"></div>
 
     <script>
-      let generatedLyrics = ''
+        let generatedLyrics = '';
 
-      async function generatePoetry() {
-        const word1 = document.getElementById('word1').value
-        const word2 = document.getElementById('word2').value
-        const word3 = document.getElementById('word3').value
-        const word4 = document.getElementById('word4').value
-        const word5 = document.getElementById('word5').value
+        async function generatePoetry() {
+            const word1 = document.getElementById('word1').value.trim();
+            const word2 = document.getElementById('word2').value.trim();
 
-        if (!word1 || !word2 || !word3 || !word4 || !word5) {
-          alert('Please enter all 5 words!')
-          return
+            if (!word1 || !word2) {
+                alert('Please enter both the name and event!');
+                return;
+            }
+
+            // Show loading message and disable button
+            document.getElementById('loadingPoem').style.display = 'block';
+            document.getElementById('generateButton').disabled = true;
+            document.getElementById('voiceOverButton').style.display = 'none';
+
+            try {
+                const response = await fetch('/generate-poetry', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ words: [word1, word2] }),
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('lyrics').textContent = 'Error generating poem: ' + data.error;
+                } else {
+                    generatedLyrics = data.lyrics;
+                    document.getElementById('lyrics').textContent = data.lyrics;
+                    document.getElementById('voiceOverButton').style.display = 'inline';
+                }
+            } catch (error) {
+                document.getElementById('lyrics').textContent = 'Error: Failed to generate poem';
+                console.error('Error:', error);
+            } finally {
+                // Hide loading message and enable button
+                document.getElementById('loadingPoem').style.display = 'none';
+                document.getElementById('generateButton').disabled = false;
+            }
         }
 
-        const response = await fetch('/generate-poetry', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ words: [word1, word2, word3, word4, word5] }),
-        })
+        async function voiceOverLyrics() {
+            if (!generatedLyrics) {
+                alert('No poem to voice over!');
+                return;
+            }
 
-        const data = await response.json()
-        if (data.error) {
-          document.getElementById('lyrics').textContent = 'Error generating poem: ' + data.error
-        } else {
-          generatedLyrics = data.lyrics
-          document.getElementById('lyrics').textContent = data.lyrics
-          document.getElementById('voiceOverButton').style.display = 'inline'
+            // Show loading message and disable button
+            document.getElementById('loadingVoice').style.display = 'block';
+            document.getElementById('voiceOverButton').disabled = true;
+
+            try {
+                const response = await fetch('/voice-over', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ lyrics: generatedLyrics }),
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error generating voice over: ' + data.error);
+                } else if (data.audioUrl) {
+                    // Remove existing audio player if any
+                    const existingPlayer = document.querySelector('audio');
+                    if (existingPlayer) {
+                        existingPlayer.remove();
+                    }
+
+                    const audioPlayer = document.createElement('audio');
+                    audioPlayer.src = data.audioUrl + '?t=' + new Date().getTime(); // Prevent caching
+                    audioPlayer.controls = true;
+                    document.body.appendChild(audioPlayer);
+                }
+            } catch (error) {
+                alert('Error generating voice over');
+                console.error('Error:', error);
+            } finally {
+                // Hide loading message and enable button
+                document.getElementById('loadingVoice').style.display = 'none';
+                document.getElementById('voiceOverButton').disabled = false;
+            }
         }
-      }
-
-      async function voiceOverLyrics() {
-        if (!generatedLyrics) {
-          alert('No poem to voice over!')
-          return
-        }
-
-        const response = await fetch('/voice-over', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ lyrics: generatedLyrics }),
-        })
-
-        const data = await response.json()
-        if (data.audioUrl) {
-          const audioPlayer = document.createElement('audio')
-          audioPlayer.src = data.audioUrl
-          audioPlayer.controls = true
-          document.body.appendChild(audioPlayer)
-          audioPlayer.play()
-        }
-      }
     </script>
-  </body>
+</body>
 </html>
